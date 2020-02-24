@@ -1,0 +1,188 @@
+<?xml version="1.0"?>
+<robot name="uav">
+<gazebo>
+    <static>true</static>
+</gazebo>
+<material name="gray">
+  <color rgba="0.5 0.5 0.5 1"/>
+</material>
+<material name="black">
+  <color rgba="0.1 0.1 0.1 1"/>
+</material>
+  <link name="uav/base_link">
+    <visual>
+      <material name="gray"/>
+      <origin rpy="0.0 0 0" xyz="0 0 0"/>
+      <geometry>
+    <mesh filename="package://uav_sim_ros/gazebo/Meshes/UAV/Frame.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </visual>
+    <inertial>
+       <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
+       <mass value="0.001" />
+       <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001" />
+    </inertial>
+  </link>
+ <joint name="m1_joint" type="continuous">
+    <axis xyz="0 0 1"/>
+    <parent link="uav/base_link" />
+    <child link="m1_link" />
+    <origin xyz="0.20 0.20 0" rpy="0 0 0" />
+  </joint>
+  <link name="m1_link" >
+    <inertial>
+      <origin xyz="0 0 0" /> 
+      <mass value="1.0" />
+      <inertia  ixx="0.001" ixy="0.0"  ixz="0.0"  iyy="0.001"  iyz="0.0"  izz="0.001" />
+    </inertial>
+    <visual>
+      <material name="black"/>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://uav_sim_ros/gazebo/Meshes/UAV/MotorCW.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </visual>
+  </link>
+ <joint name="m2_joint" type="continuous">
+    <axis xyz="0 0 1"/>
+    <parent link="uav/base_link" />
+    <child link="m2_link" />
+    <origin xyz="-0.20 -0.20 0" rpy="0 0 0" />
+  </joint>
+  <link name="m2_link" >
+    <inertial>
+      <origin xyz="0 0 0" /> 
+      <mass value="1.0" />
+      <inertia  ixx="0.001" ixy="0.0"  ixz="0.0"  iyy="0.001"  iyz="0.0"  izz="0.001" />
+    </inertial>
+    <visual>
+      <material name="black"/>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://uav_sim_ros/gazebo/Meshes/UAV/MotorCW.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </visual>
+  </link>
+ <joint name="m3_joint" type="continuous">
+    <axis xyz="0 0 1"/>
+    <parent link="uav/base_link" />
+    <child link="m3_link" />
+    <origin xyz="0.20 -0.20 0" rpy="0 0 0" />
+  </joint>
+  <link name="m3_link" >
+    <inertial>
+      <origin xyz="0 0 0" /> 
+      <mass value="1.0" />
+      <inertia  ixx="0.001" ixy="0.0"  ixz="0.0"  iyy="0.001"  iyz="0.0"  izz="0.001" />
+    </inertial>
+    <visual>
+      <material name="black"/>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://uav_sim_ros/gazebo/Meshes/UAV/MotorCCW.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </visual>
+  </link>
+ <joint name="m4_joint" type="continuous">
+    <axis xyz="0 0 1"/>
+    <parent link="uav/base_link" />
+    <child link="m4_link" />
+    <origin xyz="-0.20 0.20 0" rpy="0 0 0" />
+  </joint>
+  <link name="m4_link" >
+    <inertial>
+      <origin xyz="0 0 0" /> 
+      <mass value="1.0" />
+      <inertia  ixx="0.001" ixy="0.0"  ixz="0.0"  iyy="0.001"  iyz="0.0"  izz="0.001" />
+    </inertial>
+    <visual>
+      <material name="black"/>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://uav_sim_ros/gazebo/Meshes/UAV/MotorCCW.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="velodyne_base_mount_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0.07"/>
+    <parent link="uav/base_link"/>
+    <child link="velodyne_base_link"/>
+  </joint>
+  <link name="velodyne_base_link">
+    <inertial>
+      <mass value="0.83"/>
+      <origin xyz="0 0 0.03585"/>
+      <inertia ixx="0.000908059425" ixy="0" ixz="0" iyy="0.000908059425" iyz="0" izz="0.0011049624"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="package://velodyne_description/meshes/VLP16_base_1.dae"/>
+      </geometry>
+    </visual>
+    <visual>
+      <geometry>
+        <mesh filename="package://velodyne_description/meshes/VLP16_base_2.dae"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="velodyne_base_scan_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0.0377"/>
+    <parent link="velodyne_base_link"/>
+    <child link="velodyne"/>
+  </joint>
+  <link name="velodyne">
+    <inertial>
+      <mass value="0.01"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.0377"/>
+      <geometry>
+        <mesh filename="package://velodyne_description/meshes/VLP16_scan.dae"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <!-- Gazebo requires the velodyne_gazebo_plugins package -->
+  <gazebo reference="velodyne">
+    <sensor name="velodyne-VLP16" type="ray">
+      <pose>0 0 0 0 0 0</pose>
+      <visualize>false</visualize>
+      <update_rate>10</update_rate>
+      <ray>
+        <scan>
+          <horizontal>
+            <samples>40</samples>
+            <resolution>1</resolution>
+            <min_angle>-3.14159265359</min_angle>
+            <max_angle>3.14159265359</max_angle>
+          </horizontal>
+          <vertical>
+            <samples>20</samples>
+            <resolution>1</resolution>
+            <min_angle>-1.5</min_angle>
+            <max_angle>1.5</max_angle>
+          </vertical>
+        </scan>
+        <range>
+          <min>0.1</min>
+          <max>100.0</max>
+          <resolution>0.001</resolution>
+        </range>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.0</stddev>
+        </noise>
+      </ray>
+      <plugin filename="libgazebo_ros_velodyne_laser.so" name="gazebo_ros_laser_controller">
+        <topicName>/velodyne_points</topicName>
+        <frameName>velodyne</frameName>
+        <min_range>.1</min_range>
+        <max_range>100.0</max_range>
+        <gaussianNoise>0.008</gaussianNoise>
+      </plugin>
+    </sensor>
+  </gazebo>
+</robot>
