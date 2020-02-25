@@ -26,6 +26,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(asif++ REQUIRED CONFIG)
 find_package(rostest REQUIRED)
 
 ## Generate messages in the 'msg' folder
@@ -63,25 +64,22 @@ catkin_package(
 ## Build ##
 ###########
 include_directories(
-	include
+	include codegen/codegen/lib/UAVDynamics codegen/codegen/lib/UAVDynamicsWithGrad
 	${catkin_INCLUDE_DIRS}
 )
 
-add_executable(gazebo_interface src/gazebo_interface.cpp)
-add_executable(integrator_node src/integrator_node.cpp)
+add_executable(integrator_node codegen/codegen/lib/UAVDynamics/UAVDynamics.cpp src/integrator_node.cpp)
 add_executable(controller_node src/controller_node.cpp)
-add_executable(safety_filter_node src/safety_filter_node.cpp)
+add_executable(safety_filter_node src/safety_filter_node.cpp codegen/codegen/lib/UAVDynamics/UAVDynamics.cpp)
 add_executable(manual_teleop_node src/manual_teleop_node.cpp src/keyboard.cpp)
 
 # Ensure messages built first
-add_dependencies(gazebo_interface uav_sim_ros_generate_messages_cpp)
 add_dependencies(integrator_node uav_sim_ros_generate_messages_cpp)
 add_dependencies(controller_node uav_sim_ros_generate_messages_cpp)
 add_dependencies(safety_filter_node uav_sim_ros_generate_messages_cpp)
 add_dependencies(manual_teleop_node uav_sim_ros_generate_messages_cpp)
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-target_link_libraries(gazebo_interface ${catkin_LIBRARIES})
 target_link_libraries(integrator_node
                       ${catkin_LIBRARIES}
                       Eigen3::Eigen
@@ -94,6 +92,8 @@ target_link_libraries(controller_node
 
 target_link_libraries(safety_filter_node
                       ${catkin_LIBRARIES}
+                      asif++::asif++
+                      asif++::libaffa
                       Eigen3::Eigen
 )
 

@@ -2,8 +2,16 @@
 <launch>
 
 	<node name="rviz_safety" pkg="rviz" type="rviz" args="-d $(find uav_sim_ros)/rviz/config_safety_filter.rviz" required="true" />
-	
-	<node name="rviz_planner" pkg="rviz" type="rviz" args="-d $(find uav_sim_ros)/rviz/config_planning.rviz" required="true" />
+
+	<arg name="uav_model" default="$(find uav_sim_ros)/rviz/URDF/amberuav.urdf"/>
+  <arg name="cast_model" default="$(find uav_sim_ros)/rviz/URDF/cast.urdf"/>
+
+  <param name="uav_description" command="$(find xacro)/xacro --inorder $(arg uav_model)" />
+  <param name="cast_description" command="$(find xacro)/xacro --inorder $(arg cast_model)" />
+
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="uav_st_pub" >
+      <remap from="robot_description" to="uav_description" />
+      <param name="publish_frequency" value="1000" />
+  </node>
 
 </launch>
-

@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<robot name="cast_flying_arena">
+
+  <link name="world">
+    <visual>
+      <origin rpy="0.0 0 -3.1415" xyz="4.075 5.135 -0.22"/>
+      <geometry>
+        <mesh filename="package://uav_sim_ros/rviz/Meshes/Environment/cast_simple_2.dae" scale="1*0.0254 1*0.0254 1*0.0254"/>
+      </geometry>
+    </visual>
+  </link>
+
+</robot>

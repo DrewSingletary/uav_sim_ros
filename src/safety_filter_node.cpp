@@ -8,58 +8,21 @@ ros::Subscriber sub_state_;
 
 ros::Publisher pub_cmd_;
 ros::Publisher pub_info_;
-ros::Publisher pub_backupTraj_;
-ros::Publisher cmdDesVizu_pub_;
-ros::Publisher cmdVizu_pub_;
-ros::Publisher closestPointVizu_pub_;
-
-Vector3d vDesVec_(0.0,0.0,0.0);
-Vector3d eulVec_(0.0,0.0,0.0);
-Quaterniond quatVec_(1.0,0.0,0.0,0.0);
-Vector3d closestPointWorldCurr_;
-Vector3d closestPointWorldCurrSmooth_;
-double closestPointDist_;
-double closestPointDistSmooth_;
-Vector3d vDesVecSmooth_(0.0,0.0,0.0);
-
-Matrix3d rotBody2World_ = Matrix3d::Identity(3,3);
 
 uav_sim_ros::cmd cmdDes_;
 uav_sim_ros::cmd cmdAct_;
 uav_sim_ros::state stateCurrent_;
 uav_sim_ros::filterInfo filter_info_;
 
-visualization_msgs::Marker cmdDesVizu_;
-visualization_msgs::Marker cmdVizu_;
-visualization_msgs::Marker closestPointVizu_;
-
-uint32_t iterInput_;
-uint32_t iterState_;
-uint32_t iterObstacles_;
 double backup_Tmax_;
 double terminalVelMax_;
 int32_t passTrough_;
 double tau_safety_;
 double tau_backup_;
 double safety_buffer_;
-double safety_buffer_soft_;
-double tNm1 = -1.0;
-double dtCurrent_;
-double smoothing_tau_vDes_;
-double smoothing_tau_obstacle_;
-
-Vector3d posOffest_(0.0,0.0,0.0);
 
 double integration_dt_;
 uint32_t integration_steps_;
-
-std::vector<std::pair<double,state_t>> backTraj_;
-std::vector<double> hSafetyList_;
-std::vector<double> hBackupList_;
-uint32_t closestPointInPCLcurrent_ = 0;
-uint32_t closestPointInPCLbackup_ = 0;
-
-nav_msgs::Path backTrajMsg_;
 
 // Controller gains
 double KiVz_;
@@ -154,49 +117,31 @@ void dynamicsCL(const state_t &x,
 	double cmdBackup[CMD_LENGTH];
 	backupController(t,x.data(),inputBackup,cmdBackup);
 
+
+  #ifdef CODEGEN
+  UAVDynamics(x.data(),inputBackup,xDot.data());
+  #else
   uavDynamics(x.data(),inputBackup,xDot.data(),t);
+  #endif
 }
 
 void filterInput(void)
 {
+  cmdAct_ = cmdDes_;
 
+  pub_cmd_.publish(cmdAct_);
 }
 
 void inputCallback(const uav_sim_ros::cmd::ConstPtr msg)
 {
 	cmdDes_ = *msg;
-	vDesVec_(0) = cmdDes_.vDes[0];
-	vDesVec_(1) = cmdDes_.vDes[1];
-	vDesVec_(2) = cmdDes_.vDes[2];
+
+  filterInput();
 }
 
 void stateCallback(const uav_sim_ros::state::ConstPtr msg)
 {
 	stateCurrent_ = *msg;
-	iterState_ = stateCurrent_.header.seq;
-
-	quatVec_ = Quaterniond(stateCurrent_.qw,
-	                       stateCurrent_.qx,
-	                       stateCurrent_.qy,
-	                       stateCurrent_.qz);
-	quat2eulZYX(quatVec_,eulVec_);
-	quat2rotm(quatVec_,rotBody2World_);
-
-	if(tNm1<0)
-		tNm1 = stateCurrent_.time;
-	else
-	{
-		dtCurrent_ = stateCurrent_.time - tNm1;
-		tNm1 = stateCurrent_.time;
-	}
-
-	filterInput();
-	pub_cmd_.publish(cmdAct_);
-	pub_info_.publish(filter_info_);
-	pub_backupTraj_.publish(backTrajMsg_);
-	cmdDesVizu_pub_.publish(cmdDesVizu_);
-	cmdVizu_pub_.publish(cmdVizu_);
-	closestPointVizu_pub_.publish(closestPointVizu_);
 }
 
 int main(int argc, char *argv[])
@@ -215,21 +160,14 @@ int main(int argc, char *argv[])
 
 	pub_cmd_ = nh_->advertise<uav_sim_ros::cmd>("uav_cmd", 1);
 	pub_info_ = nh_->advertise<uav_sim_ros::filterInfo>("safety_filter_info", 1);
-	pub_backupTraj_ = nh_->advertise<nav_msgs::Path>("backup_traj", 1);
-	cmdDesVizu_pub_ = nh_->advertise<visualization_msgs::Marker>("uav_cmd_des_vizu", 1);
-	cmdVizu_pub_ = nh_->advertise<visualization_msgs::Marker>("uav_cmd_vizu", 1);
-	closestPointVizu_pub_ = nh_->advertise<visualization_msgs::Marker>("uav_closest_point_vizu", 1);
 
 	// Retreive params
 	nhParams_->param<int32_t>("pass_through",passTrough_,0);
 	nhParams_->param<double>("integration_dt",integration_dt_,0.01);
 	nhParams_->param<double>("backup_Tmax",backup_Tmax_,1.0);
 	nhParams_->param<double>("safety_buffer",safety_buffer_,0.3);
-	nhParams_->param<double>("safety_buffer_soft",safety_buffer_soft_,0.3);
 	nhParams_->param<double>("terminal_vel_max",terminalVelMax_,0.05);
 	nhParams_->param<double>("tau_backup",tau_backup_,0.1);
-	nhParams_->param<double>("smoothing_tau_obstacle",smoothing_tau_obstacle_,0.1);
-	nhParams_->param<double>("smoothing_tau_vDes",smoothing_tau_vDes_,0.1);
 
 	nhParams_->param<double>("hoverThrust",hoverThrust_,0.52);
 	nhParams_->param<double>("KiVz",KiVz_,5.0);
@@ -240,44 +178,15 @@ int main(int argc, char *argv[])
 	nhParams_->param<double>("KpOmegaz",KpOmegaz_,2.0);
 	nhParams_->param<double>("maxInclination",maxInclination_,30.0);
 
-	backTrajMsg_.header.frame_id = "/world";
-	backTrajMsg_.poses.reserve(integration_steps_+1);
-	cmdDesVizu_.header.frame_id = "/world";
-	cmdDesVizu_.ns = "uav_sim_ros";
-	cmdDesVizu_.points.resize(2);
-	cmdDesVizu_.color.a = 1.0;
-	cmdDesVizu_.color.r = 0.0;
-	cmdDesVizu_.color.g = 1.0;
-	cmdDesVizu_.color.b = 0.0;
-	cmdDesVizu_.scale.x = 0.05;
-	cmdDesVizu_.scale.y = 0.1;
-	cmdDesVizu_.scale.z = 0.1;
-	cmdDesVizu_.id = 0;
-	cmdDesVizu_.type = visualization_msgs::Marker::ARROW;
-	cmdDesVizu_.action = visualization_msgs::Marker::ADD;
-
-	cmdVizu_ = cmdDesVizu_;
-	cmdVizu_.id = 1;
-	cmdVizu_.color.b = 1.0;
-	cmdVizu_.color.g = 0.0;
-
-	closestPointVizu_ = cmdDesVizu_;
-	closestPointVizu_.id = 2;
-	closestPointVizu_.color.r = 1.0;
-	closestPointVizu_.color.g = 0.0;
-
 	// Display node info
 	ROS_INFO("Safety Filter node successfuly started with:");
 	ROS_INFO("___pass_through=%u",passTrough_);
 	ROS_INFO("___integration_dt=%.3f",integration_dt_);
 	ROS_INFO("___backup_Tmax=%.3f",backup_Tmax_);
 	ROS_INFO("___safety_buffer=%.3f",safety_buffer_);
-	ROS_INFO("___safety_buffer_soft=%.3f",safety_buffer_soft_);
 	ROS_INFO("___terminal_vel_max=%.3f",terminalVelMax_);
 	ROS_INFO("___tau_safety=%.3f",tau_safety_);
 	ROS_INFO("___tau_backup=%.3f",tau_backup_);
-	ROS_INFO("___smoothing_tau_obstacle=%.3f",smoothing_tau_obstacle_);
-	ROS_INFO("___smoothing_tau_vDes=%.3f",smoothing_tau_vDes_);
 
 	ROS_INFO("___hoverThrust=%f",hoverThrust_);
 	ROS_INFO("___KiVz=%f",KiVz_);

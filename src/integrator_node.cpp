@@ -1,4 +1,4 @@
-#include "uav_sim_ros/integrator_node.hpp" 
+#include "uav_sim_ros/integrator_node.hpp"
 #include <sensor_msgs/JointState.h>
 
 
@@ -48,7 +48,11 @@ void dynamicsCL(const state_t &x, state_t &xDot, const double t)
 		else
 			inputSaturated[i] = inputCurrent_.input[i];
 	}
-   uavDynamics(x.data(),inputSaturated,xDot.data(),t);
+  #ifdef CODEGEN
+  UAVDynamics(x.data(),inputSaturated,xDot.data());
+  #else
+  uavDynamics(x.data(),inputSaturated,xDot.data(),t);
+  #endif
 }
 
 void inputCallback(const uav_sim_ros::input::ConstPtr msg)

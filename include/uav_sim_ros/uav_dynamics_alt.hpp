@@ -29,6 +29,29 @@ const double uavModel[21] = {2.424,    //m
                              0.0       //Cla
                             };
 
+// const double uavModel[21] = {2.746,    //m
+//                              1e-7*136440, //Ixx
+//                              1e-7*142300, //Iyy
+//                              1e-7*235160, //Izz
+//                              0.0,      //Iyz
+//                              0.0,      //Ixz
+//                              0.0,      //Ixy
+//                              0.0,      //cgz
+//                              0.4766,      //FrameD
+//                              0.032,    //mProp
+//                              1e-7*1217/2,  //Jprop (along prop axis)
+//                              0,//3.5e-06,  //Iprop
+//                              0.00,     //cgzProp
+//                              9.80665,  //gravity constant
+//                              2.2234e-07,   //kf
+//                              1.4179e-05,   //kt
+//                              0.0122,   //K
+//                              0.074168864848772,      //R
+//                              14.8,     //Umax
+//                              0.7,      //Cfl
+//                              0.0       //Cla
+//                             };
+
 static void blkdiag(const double varargin_1[9],
                     const double varargin_2[49],
                           double y[100])

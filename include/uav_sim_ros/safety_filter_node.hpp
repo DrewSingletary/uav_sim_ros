@@ -12,10 +12,17 @@
 #include "visualization_msgs/Marker.h"
 #include "nav_msgs/Path.h"
 #include "uav_sim_ros/common.hpp"
-#include "uav_sim_ros/uav_dynamics.hpp"
 
 #include <boost/numeric/odeint.hpp>
 #include <boost/numeric/odeint/iterator/n_step_iterator.hpp>
+
+#ifdef CODEGEN
+#include <Eigen/Dense>
+#include "UAVDynamics.h"
+using namespace Eigen;
+#else
+#include "uav_sim_ros/uav_dynamics_alt.hpp"
+#endif
 
 using namespace boost::numeric::odeint;
 typedef std::vector<double>   state_t;

@@ -9,6 +9,8 @@
 #include <map>
 #include <functional>
 
+#define CODEGEN 1
+
 static const uint32_t STATE_LENGTH = 17;
 static const uint32_t INPUT_LENGTH = 4;
 static const uint32_t CMD_LENGTH = 4;
