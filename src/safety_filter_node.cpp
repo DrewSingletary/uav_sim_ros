@@ -35,22 +35,12 @@ double maxInclination_;
 double hoverThrust_;
 double uzInt_;
 
+#include "uav_sim_ros/asif_filter.hpp"
+
 void safetySet(const double x[STATE_LENGTH],
                          double &h)
 {
 
-}
-
-void backupSet(const double x[STATE_LENGTH],
-                     double &h)
-{
-	const Vector3d v(x[7],x[8],x[9]);
-	const Vector3d omega(x[10],x[11],x[12]);
-	const Vector4d q(x[3],x[4],x[5],x[6]);
-	const Vector4d qUnit(1.0,0.0,0.0,0.0);
-	filter_info_.vBackup = v.norm();
-	const double tmp = (terminalVelMax_*terminalVelMax_);
-	h = 1 - v.squaredNorm()/tmp; - omega.squaredNorm()/tmp - (q-qUnit).squaredNorm()/tmp;
 }
 
 void backupController(const double t,
