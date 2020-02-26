@@ -8,9 +8,9 @@ float64 qw
 float64 qx
 float64 qy
 float64 qz
-float64 vx
-float64 vy
-float64 vz
+float64 vbx
+float64 vby
+float64 vbz
 float64 omegax
 float64 omegay
 float64 omegaz
@@ -18,6 +18,6 @@ float64 omega1
 float64 omega2
 float64 omega3
 float64 omega4
-float64 vbx
-float64 vby
-float64 vbz
+float64 vx
+float64 vy
+float64 vz

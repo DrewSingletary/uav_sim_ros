@@ -7,7 +7,6 @@ ros::NodeHandle *nhParams_;
 ros::ServiceServer srv_ui_;
 ros::Subscriber sub_input_;
 ros::Publisher pub_state_;
-ros::Publisher pub_stateRaw_;
 ros::Publisher joint_pub_;
 
 double m1_old = 0;
@@ -50,6 +49,7 @@ void dynamicsCL(const state_t &x, state_t &xDot, const double t)
 	}
   #ifdef CODEGEN
   UAVDynamics(x.data(),inputSaturated,xDot.data());
+  // now to get stuff in the right frame
   #else
   uavDynamics(x.data(),inputSaturated,xDot.data(),t);
   #endif
@@ -75,9 +75,9 @@ void updateStateCurrent(void)
 	stateCurrent_.qx = q.x();
 	stateCurrent_.qy = q.y();
 	stateCurrent_.qz = q.z();
-	stateCurrent_.vx = odeState_[7];
-	stateCurrent_.vy = odeState_[8];
-	stateCurrent_.vz = odeState_[9];
+  stateCurrent_.vx = odeState_[7];
+  stateCurrent_.vy = odeState_[8];
+  stateCurrent_.vz = odeState_[9];
 	stateCurrent_.omegax = odeState_[10];
 	stateCurrent_.omegay = odeState_[11];
 	stateCurrent_.omegaz = odeState_[12];
@@ -86,12 +86,10 @@ void updateStateCurrent(void)
 	stateCurrent_.omega3 = odeState_[15];
 	stateCurrent_.omega4 = odeState_[16];
 
-	Matrix3d rotBody2World;
+  Matrix3d rotBody2World;
 	quat2rotm(q,rotBody2World);
-
 	Vector3d v(odeState_[7],odeState_[8],odeState_[9]);
 	Vector3d vb = rotBody2World.transpose()*v;
-
 	stateCurrent_.vbx = vb(0);
 	stateCurrent_.vby = vb(1);
 	stateCurrent_.vbz = vb(2);
@@ -104,52 +102,48 @@ void sendStateCurrent(void)
 	stateCurrent_.header.frame_id = std::to_string(inputCurrent_.header.seq);
 
 	pub_state_.publish(stateCurrent_);
-
-	std_msgs::Float64MultiArray stateRaw;
-	stateRaw.data = odeState_;
-	pub_stateRaw_.publish(stateRaw);
 }
 
 void sendTransformCurrent(void)
 {
 
 	static tf::TransformBroadcaster uav_odom_broadcaster;
-	geometry_msgs::TransformStamped uav_odom_trans;
-	uav_odom_trans.header.seq = iter_;
-	uav_odom_trans.header.stamp = ros::Time::now();
-	uav_odom_trans.header.frame_id = "world";
-    uav_odom_trans.child_frame_id = "uav/base_link";
+  geometry_msgs::TransformStamped uav_odom_trans;
+  uav_odom_trans.header.seq = iter_;
+  uav_odom_trans.header.stamp = ros::Time::now();
+  uav_odom_trans.header.frame_id = "world";
+  uav_odom_trans.child_frame_id = "uav/base_link";
 
-    uav_odom_trans.transform.translation.x = stateCurrent_.x;
-    uav_odom_trans.transform.translation.y = stateCurrent_.y;
-    uav_odom_trans.transform.translation.z = stateCurrent_.z;
+  uav_odom_trans.transform.translation.x = stateCurrent_.x;
+  uav_odom_trans.transform.translation.y = stateCurrent_.y;
+  uav_odom_trans.transform.translation.z = stateCurrent_.z;
 
-	geometry_msgs::Quaternion uav_odom_quat;
-	uav_odom_quat.w = stateCurrent_.qw;
-	uav_odom_quat.x = stateCurrent_.qx;
-	uav_odom_quat.y = stateCurrent_.qy;
-	uav_odom_quat.z = stateCurrent_.qz;
-	uav_odom_trans.transform.rotation = uav_odom_quat;
+  geometry_msgs::Quaternion uav_odom_quat;
+  uav_odom_quat.w = stateCurrent_.qw;
+  uav_odom_quat.x = stateCurrent_.qx;
+  uav_odom_quat.y = stateCurrent_.qy;
+  uav_odom_quat.z = stateCurrent_.qz;
+  uav_odom_trans.transform.rotation = uav_odom_quat;
 
-	uav_odom_broadcaster.sendTransform(uav_odom_trans);
+  uav_odom_broadcaster.sendTransform(uav_odom_trans);
 
-	sensor_msgs::JointState joint_state;
-	joint_state.header.seq = uav_odom_trans.header.seq;
-	joint_state.header.stamp = uav_odom_trans.header.stamp;
-	joint_state.name.resize(4);
-    joint_state.position.resize(4);
-    joint_state.velocity.resize(4);
+  sensor_msgs::JointState joint_state;
+  joint_state.header.seq = uav_odom_trans.header.seq;
+  joint_state.header.stamp = uav_odom_trans.header.stamp;
+  joint_state.name.resize(4);
+  joint_state.position.resize(4);
+  joint_state.velocity.resize(4);
 
-    joint_state.name[0] = "m1_joint";
-    m1_old = remainder(m1_old + 0.04,M_PI*2);
-    joint_state.position[0] = m1_old;
-    joint_state.name[1] = "m2_joint";
-    joint_state.position[1] = m1_old;
-    joint_state.name[2] = "m3_joint";
-    joint_state.position[2] = m1_old;
-    joint_state.name[3] = "m4_joint";
-    joint_state.position[3] = m1_old;
-    joint_pub_.publish(joint_state);
+  joint_state.name[0] = "m1_joint";
+  m1_old = remainder(m1_old + 0.04,M_PI*2);
+  joint_state.position[0] = m1_old;
+  joint_state.name[1] = "m2_joint";
+  joint_state.position[1] = m1_old;
+  joint_state.name[2] = "m3_joint";
+  joint_state.position[2] = m1_old;
+  joint_state.name[3] = "m4_joint";
+  joint_state.position[3] = m1_old;
+  joint_pub_.publish(joint_state);
 }
 
 
@@ -245,7 +239,6 @@ int main (int argc, char *argv[])
 	// Init pubs, subs and srvs
 	sub_input_ = nh_->subscribe<uav_sim_ros::input>("uav_input", 1,inputCallback);
 	pub_state_ = nh_->advertise<uav_sim_ros::state>("uav_state", 1);
-	pub_stateRaw_ = nh_->advertise<std_msgs::Float64MultiArray>("uav_state_raw", 10);
 	srv_ui_ = nh_->advertiseService("integrator/ui", uiCallback);
 	joint_pub_ = nh_->advertise<sensor_msgs::JointState>("/joint_states",1);
 

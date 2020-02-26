@@ -40,8 +40,8 @@
 			<param name="KiVz" value="5.0" />
 			<param name="KpVz" value="1.0" />
 			<param name="KpVxy" value="0.7" />
-			<param name="KpAttitude" value="10.0" />
-			<param name="KdAttitude" value="1.0" />
+			<param name="KpAttitude" value="0.5" />
+			<param name="KdAttitude" value="0.05" />
 			<param name="KiOmegaz" value="1.0" />
 			<param name="KpOmegaz" value="2.0" />
 			<param name="maxInclination" value="30.0" />
