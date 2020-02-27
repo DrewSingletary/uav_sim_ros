@@ -48,7 +48,16 @@ void dynamicsCL(const state_t &x, state_t &xDot, const double t)
 			inputSaturated[i] = inputCurrent_.input[i];
 	}
   #ifdef CODEGEN
-  UAVDynamics(x.data(),inputSaturated,xDot.data());
+  double f[17];
+  double g[17*4];
+  UAVDynamics(x.data(),f,g);
+  for (int i = 0; i < 17; i++){
+    double tmp = 0;
+    for (int j = 0; j < 4; j++){
+      tmp += g[i+j*STATE_LENGTH]*inputSaturated[j];
+    }
+    xDot[i] = f[i]+tmp;
+  }
   // now to get stuff in the right frame
   #else
   uavDynamics(x.data(),inputSaturated,xDot.data(),t);

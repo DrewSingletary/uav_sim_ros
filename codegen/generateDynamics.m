@@ -9,7 +9,7 @@ cfg = coder.config('lib');
 cfg.GenCodeOnly = true;
 cfg.TargetLang = 'C++';
 
-codegen -config cfg UAVDynamics -args {zeros(17,1,'double'),zeros(4,1,'double')}
+codegen -config cfg UAVDynamics -args {zeros(17,1,'double')}
 codegen -config cfg UAVDynamicsWithGrad -args {zeros(17,1,'double'),zeros(4,1,'double')}
 codegen -config cfg UAVDynamicsGradient -args {zeros(17,1,'double')}
 

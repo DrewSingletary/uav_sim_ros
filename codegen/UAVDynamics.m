@@ -1,5 +1,4 @@
-function [XDot] = UAVDynamics(X,V)
+function [f,g] = UAVDynamics(X)
     f = matf(X);
     g = matg(X);
-    XDot = f+g*V;
 end

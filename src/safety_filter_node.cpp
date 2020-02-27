@@ -51,7 +51,7 @@ static const uint32_t nx = 17;
 static const uint32_t nu = 4;
 static const uint32_t npSS = 1;
 static const uint32_t npBS = 1;
-static const uint32_t npBTSS = 1;
+static const uint32_t npBTSS = 2;
 
 static const double lb[nu] = {0};
 static const double ub[nu] = {1};
@@ -77,7 +77,7 @@ void backupSet(const double x[nx], double h[1], double Dh[nx])
   const Vector4d qUnit(1.0,0.0,0.0,0.0);
   filter_info_.vBackup = v.norm();
   const double tmp = (terminalVelMax_*terminalVelMax_);
-  // h[0] = 1 - v.squaredNorm()/tmp; - omega.squaredNorm()/tmp - (q-qUnit).squaredNorm()/tmp;
+  h[0] = 1 - v.squaredNorm()/tmp;
   for (int i = 0; i < nx; i++) {
     Dh[i] = 0;
   }
@@ -94,12 +94,36 @@ void backupController(const double x[nx], double u[nu], double Du[nu*nx])
   for (int i = 0; i < nu*nx; i++) {
     Du[i] = Dutemp[i].re;
   }
-	saturateInPlace(u,0.0,1.0,INPUT_LENGTH);
+  ROS_INFO("state for backup ctrl---------");
+  for (int i = 0; i < nx; i++) {
+    cout << x[i] << " ";
+  }
+  cout << endl;
+  ROS_INFO("------------------------------");
+  cout << endl;
+  ROS_INFO("backup control action---------");
+  ROS_INFO("u: (%f,%f,%f,%f)",u[0],u[1],u[2],u[3]);
+  ROS_INFO("------------------------------");
+	// saturateInPlace(u,0.0,1.0,INPUT_LENGTH);
 }
 
 void dynamics(const double X[nx], double f[nx], double g[nu*nx])
 {
   UAVDynamics(X,f,g);
+  double xDot[17];
+  for (int i = 0; i < 17; i++){
+    double tmp = 0;
+    for (int j = 0; j < 4; j++){
+      tmp += g[i+j*STATE_LENGTH]*hoverThrust_;
+    }
+    xDot[i] = f[i]+tmp;
+  }
+  ROS_INFO("xdot at hover thrust----------");
+  for (int i = 0; i < nx; i++) {
+    cout << xDot[i] << " ";
+  }
+  cout << endl;
+  ROS_INFO("------------------------------");
 }
 
 void dynamicsGradients(const double x[nx], double Df[nx*nx], double Dg[nx*nu*nx])
@@ -124,16 +148,72 @@ void filterInput(void)
 	int32_t rc = asif->filter(xNow,uDesNow,uActNow,relax);
 	filterTimer.toc();
 
-  creal_T Dutemp[68];
-  double model[6] = {KpVxy_,KpVz_,KpAttitude_,KdAttitude_,KpOmegaz_,hoverThrust_};
-  BackupController(xNow,model,uActNow,Dutemp);
+  // ROS_INFO("u: (%f,%f,%f,%f)",uActNow[0],uActNow[1],uActNow[2],uActNow[3]);
+  for (int i = 0; i < 5; i ++){
+    ROS_INFO("backup traj(%i) omegas: (%f,%f,%f,%f)",i,(*asif).backTraj_[i].second[13],(*asif).backTraj_[i].second[14],(*asif).backTraj_[i].second[15],(*asif).backTraj_[i].second[16]);
+  }
+  exit(1);
+
+  // //test backup controller
+  // creal_T Dutemp[68];
+  // double model[6] = {KpVxy_,KpVz_,KpAttitude_,KdAttitude_,KpOmegaz_,hoverThrust_};
+  // BackupController(xNow,model,uActNow,Dutemp);
+  // ROS_INFO("testing backup controller");
+  // ROS_INFO("u: (%f,%f,%f,%f)",uActNow[0],uActNow[1],uActNow[2],uActNow[3]);
+  // for (int i = 0; i < 68; i++) {
+  //   ROS_INFO("DU(%i): %f",i,Dutemp[i].re);
+  // }
+  //
+  // //test dynamics and gradient
+  // double Df[nx*nx];
+  // double Dg[nx*nu*nx];
+  // double f[nx];
+  // double g[nx*nu];
+  // dynamics(xNow,f,g);
+  // dynamicsGradients(xNow,Df,Dg);
+  // ROS_INFO("testing dynamics and gradient");
+  // for (int i = 0; i < nx; i++) {
+  //   ROS_INFO("f(%i): %f",i,f[i]);
+  // }
+  // for (int i = 0; i < nx*nu; i++) {
+  //   ROS_INFO("g(%i): %f",i,g[i]);
+  // }
+  // for (int i = 0; i < nx*nx; i++) {
+  //   ROS_INFO("df(%i): %f",i,Df[i]);
+  // }
+  // for (int i = 0; i < nx*nx*nu; i++) {
+  //   ROS_INFO("dg(%i): %f",i,Dg[i]);
+  // }
+  //
+  // //test safety filter and backup set
+  // double Dh[npSS*nx];
+  // double h[npSS];
+  // safetySet(xNow,h,Dh);
+  // ROS_INFO("safety");
+  // for (int i = 0; i < npSS; i++) {
+  //   ROS_INFO("h(%i): %f",i,h[i]);
+  // }
+  // for (int i = 0; i < nx*npSS; i++) {
+  //   ROS_INFO("Dh(%i): %f",i,Dh[i]);
+  // }
+  // backupSet(xNow,h,Dh);
+  // ROS_INFO("backup");
+  // for (int i = 0; i < 1; i++) {
+  //   ROS_INFO("h(%i): %f",i,h[i]);
+  // }
+  // for (int i = 0; i < nx*1; i++) {
+  //   ROS_INFO("Dh(%i): %f",i,Dh[i]);
+  // }
+  //
+  // exit(1);
 
 	if (rc < 0) {
 		ROS_INFO("QP FAILED");
 	}
 
+
   // ROS_INFO("Average filter time: %f", filterTimer.getAverage()*1.0e6);
-  ROS_INFO("udes: (%f,%f,%f,%f) uact: (%f,%f,%f,%f)", uDesNow[0],uDesNow[1],uDesNow[2],uDesNow[3],uActNow[0],uActNow[1],uActNow[2],uActNow[3]);
+
 	// filter_info_.hBackupEnd = asif->hBackupEnd_;
 	// filter_info_.filterTimerUs = filterTimer.getAverage()*1.0e6;
 
@@ -245,6 +325,7 @@ int main(int argc, char *argv[])
 
 	asif = new ASIF::ASIFimplicit(nx,nu,npSS,npBS,npBTSS,
 	                              safetySet,backupSet,dynamics,dynamicsGradients,backupController);
+
 	asif->initialize(lb,ub,opts);
   geometry_msgs::PoseStamped poseTmp;
   backTrajMsg_.header.frame_id = "/world";
