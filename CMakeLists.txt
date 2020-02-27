@@ -64,7 +64,11 @@ catkin_package(
 ## Build ##
 ###########
 include_directories(
-	include codegen/codegen/lib/UAVDynamics codegen/codegen/lib/UAVDynamicsWithGrad codegen/codegen/lib/UAVDynamicsGradient
+	include
+  codegen/codegen/lib/UAVDynamics
+  codegen/codegen/lib/UAVDynamicsWithGrad
+  codegen/codegen/lib/UAVDynamicsGradient
+  codegen/codegen/lib/BackupController
 	${catkin_INCLUDE_DIRS}
 )
 
@@ -74,9 +78,12 @@ add_executable(controller_node src/controller_node.cpp)
 add_executable(safety_filter_node src/safety_filter_node.cpp
                codegen/codegen/lib/UAVDynamics/UAVDynamics.cpp
                codegen/codegen/lib/UAVDynamicsGradient/UAVDynamicsGradient.cpp
-               codegen/codegen/lib/UAVDynamicsGradient/rt_nonfinite.cpp
-               codegen/codegen/lib/UAVDynamicsGradient/rtGetInf.cpp
-               codegen/codegen/lib/UAVDynamicsGradient/rtGetNaN.cpp)
+               codegen/codegen/lib/BackupController/BackupController.cpp
+               codegen/codegen/lib/BackupController/backupU.cpp
+               codegen/codegen/lib/BackupController/rt_nonfinite.cpp
+               codegen/codegen/lib/BackupController/rtGetInf.cpp
+               codegen/codegen/lib/BackupController/rtGetNaN.cpp
+               codegen/codegen/lib/BackupController/BackupController_rtwutil.cpp)
 add_executable(manual_teleop_node src/manual_teleop_node.cpp src/keyboard.cpp)
 
 # Ensure messages built first

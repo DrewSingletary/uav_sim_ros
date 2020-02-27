@@ -1,18 +1,30 @@
 #include "uav_sim_ros/safety_filter_node.hpp"
 
+#include "asif++.h"
+#include <Eigen/Dense>
+#include <algorithm>
+#include "UAVDynamicsGradient.h"
+#include "BackupController.h"
+#include "backupU.h"
+
 ros::NodeHandle *nh_;
 ros::NodeHandle *nhParams_;
 
 ros::Subscriber sub_cmdDes_;
 ros::Subscriber sub_state_;
+ros::Subscriber sub_input_;
+
 
 ros::Publisher pub_cmd_;
 ros::Publisher pub_info_;
+ros::Publisher pub_backupTraj_;
 
+uav_sim_ros::input inputDes_;
 uav_sim_ros::cmd cmdDes_;
 uav_sim_ros::cmd cmdAct_;
 uav_sim_ros::state stateCurrent_;
 uav_sim_ros::filterInfo filter_info_;
+nav_msgs::Path backTrajMsg_;
 
 double backup_Tmax_;
 double terminalVelMax_;
@@ -35,98 +47,133 @@ double maxInclination_;
 double hoverThrust_;
 double uzInt_;
 
-#include "uav_sim_ros/asif_filter.hpp"
+static const uint32_t nx = 17;
+static const uint32_t nu = 4;
+static const uint32_t npSS = 1;
+static const uint32_t npBS = 1;
+static const uint32_t npBTSS = 1;
 
-void safetySet(const double x[STATE_LENGTH],
-                         double &h)
+static const double lb[nu] = {0};
+static const double ub[nu] = {1};
+
+ASIF::ASIFimplicit *asif;
+
+CyberTimer filterTimer(10000);
+
+void safetySet(const double x[nx], double h[npSS], double Dh[npSS*nx])
 {
-
+  h[0] = 5-x[0];
+  for (int i = 0; i < npSS*nx; i++) {
+    Dh[i] = 0;
+  }
+  Dh[0] = -1;
 }
 
-void backupController(const double t,
-                      const double x[STATE_LENGTH],
-                            double u[INPUT_LENGTH],
-                            double vDes[CMD_LENGTH])
+void backupSet(const double x[nx], double h[1], double Dh[nx])
 {
-	//Compute orientations from quaternion
-	Quaterniond q(x[3],x[4],x[5],x[6]);
+  const Vector3d v(x[7],x[8],x[9]);
+  const Vector3d omega(x[10],x[11],x[12]);
+  const Vector4d q(x[3],x[4],x[5],x[6]);
+  const Vector4d qUnit(1.0,0.0,0.0,0.0);
+  filter_info_.vBackup = v.norm();
+  const double tmp = (terminalVelMax_*terminalVelMax_);
+  // h[0] = 1 - v.squaredNorm()/tmp; - omega.squaredNorm()/tmp - (q-qUnit).squaredNorm()/tmp;
+  for (int i = 0; i < nx; i++) {
+    Dh[i] = 0;
+  }
+  Dh[7] = -2*x[7]/tmp;
+  Dh[8] = -2*x[8]/tmp;
+  Dh[9] = -2*x[9]/tmp;
+}
 
-	Matrix3d rotBody2World;
-	quat2rotm(q,rotBody2World);
-
-	Vector3d eul;
-	quat2eulZYX(q,eul);
-	Vector3d zBodyInWorld = rotBody2World*(Vector3d() << 0, 0, 1).finished();
-
-	// Compute body frame velocity
-	Vector3d v(x[7],x[8],x[9]);
-	Vector3d vWorldNoYaw = rotz(-eul(2))*v;
-
-	// Compute desired velocity
-	Vector3d vDesVec(0.0,0.0,0.0);
-	double yawDotDes = 0.0;
-
-	vDes[0] = vDesVec(0);
-	vDes[1] = vDesVec(1);
-	vDes[2] = vDesVec(2);
-	vDes[3] = yawDotDes;
-
-	// Compute error
-	const double vxError = saturate(KpVxy_*(vDesVec(0) - vWorldNoYaw(0)),-deg2rad(maxInclination_),deg2rad(maxInclination_));
-	const double vyError = saturate(KpVxy_*(vDesVec(1) - vWorldNoYaw(1)),-deg2rad(maxInclination_),deg2rad(maxInclination_));
-	const double vzError = vDesVec(2) - vWorldNoYaw(2);
-
-	const double rollError = -vyError-eul(0);
-	const double pitchError = vxError-eul(1);
-	const double rollErrorDot = -x[10];
-	const double pitchErrorDot = -x[11];
-	const double yawErrorDot = yawDotDes - x[12];
-
-	// Compute vz PI output
-	const double uz = saturate(KpVz_*vzError + uzInt_/zBodyInWorld(2),hoverThrust_-0.3,hoverThrust_+0.3);
-	const double uroll = saturate(KpAttitude_*rollError + KdAttitude_*rollErrorDot,-0.5,0.5);
-	const double upitch = saturate(KpAttitude_*pitchError + KdAttitude_*pitchErrorDot,-0.5,0.5);
-	const double uomegaz = saturate(KpOmegaz_*yawErrorDot,-0.2,0.2);
-
-	// Fill up message
-	u[0] = uz - uroll - upitch - uomegaz;
-	u[1] = uz - uroll + upitch + uomegaz;
-	u[2] = uz + uroll + upitch - uomegaz;
-	u[3] = uz + uroll - upitch + uomegaz;
-
-	// Clamp inputs
+void backupController(const double x[nx], double u[nu], double Du[nu*nx])
+{
+  creal_T Dutemp[68];
+  double model[6] = {KpVxy_,KpVz_,KpAttitude_,KdAttitude_,KpOmegaz_,hoverThrust_};
+  BackupController(x,model,u,Dutemp);
+  for (int i = 0; i < nu*nx; i++) {
+    Du[i] = Dutemp[i].re;
+  }
 	saturateInPlace(u,0.0,1.0,INPUT_LENGTH);
 }
 
-void dynamicsCL(const state_t &x,
-                      state_t &xDot,
-                const double t)
+void dynamics(const double X[nx], double f[nx], double g[nu*nx])
 {
-	xDot = x;
-	double inputBackup[INPUT_LENGTH];
-	double cmdBackup[CMD_LENGTH];
-	backupController(t,x.data(),inputBackup,cmdBackup);
+  UAVDynamics(X,f,g);
+}
 
-
-  #ifdef CODEGEN
-  UAVDynamics(x.data(),inputBackup,xDot.data());
-  #else
-  uavDynamics(x.data(),inputBackup,xDot.data(),t);
-  #endif
+void dynamicsGradients(const double x[nx], double Df[nx*nx], double Dg[nx*nu*nx])
+{
+  UAVDynamicsGradient(x,Df,Dg);
 }
 
 void filterInput(void)
 {
+
+  double xNow[nx] = {stateCurrent_.x,stateCurrent_.y,stateCurrent_.z,
+                    stateCurrent_.qw,stateCurrent_.qx,stateCurrent_.qy,stateCurrent_.qz,
+                    stateCurrent_.vx,stateCurrent_.vy,stateCurrent_.vz,
+                    stateCurrent_.omegax,stateCurrent_.omegay,stateCurrent_.omegaz,
+                    stateCurrent_.omega1,stateCurrent_.omega2,stateCurrent_.omega3,stateCurrent_.omega4};
+	double uDesNow[nu] = {inputDes_.input[0],inputDes_.input[1],inputDes_.input[2],inputDes_.input[3]};
+	double uActNow[nu] = {0.0};
+	double tNow = 0.0;
+	double relax[2];
+
+	filterTimer.tic();
+	int32_t rc = asif->filter(xNow,uDesNow,uActNow,relax);
+	filterTimer.toc();
+
+  creal_T Dutemp[68];
+  double model[6] = {KpVxy_,KpVz_,KpAttitude_,KdAttitude_,KpOmegaz_,hoverThrust_};
+  BackupController(xNow,model,uActNow,Dutemp);
+
+	if (rc < 0) {
+		ROS_INFO("QP FAILED");
+	}
+
+  // ROS_INFO("Average filter time: %f", filterTimer.getAverage()*1.0e6);
+  ROS_INFO("udes: (%f,%f,%f,%f) uact: (%f,%f,%f,%f)", uDesNow[0],uDesNow[1],uDesNow[2],uDesNow[3],uActNow[0],uActNow[1],uActNow[2],uActNow[3]);
+	// filter_info_.hBackupEnd = asif->hBackupEnd_;
+	// filter_info_.filterTimerUs = filterTimer.getAverage()*1.0e6;
+
+	// filter_info_.BTorthoBS = asif->BTorthoBS_;
+	// filter_info_.TTS = asif->TTS_;
+	// filter_info_.hSafetyNow = asif->hSafetyNow_;
+	// filter_info_.asifStatus = ASIF::ASIFimplicit::filterErrorMsgString(rc);
+	// filter_info_.relax1 = relax[0];
+	// filter_info_.relax2 = relax[1];
+
   cmdAct_ = cmdDes_;
 
   pub_cmd_.publish(cmdAct_);
+
+  int i =i  = 0;
+  for(auto & pose : backTrajMsg_.poses)
+	{
+    pose.pose.position.x = (*asif).backTraj_[i].second[0];
+		pose.pose.position.y = (*asif).backTraj_[i].second[1];
+		pose.pose.position.z = (*asif).backTraj_[i].second[2];
+		pose.pose.orientation.w = (*asif).backTraj_[i].second[3];
+		pose.pose.orientation.x = (*asif).backTraj_[i].second[4];
+		pose.pose.orientation.y = (*asif).backTraj_[i].second[5];
+		pose.pose.orientation.z = (*asif).backTraj_[i].second[6];
+    i++;
+	}
+
+	pub_backupTraj_.publish(backTrajMsg_);
 }
 
-void inputCallback(const uav_sim_ros::cmd::ConstPtr msg)
+void inputCallback(const uav_sim_ros::input::ConstPtr msg)
 {
-	cmdDes_ = *msg;
+	inputDes_ = *msg;
 
   filterInput();
+}
+
+void cmdCallback(const uav_sim_ros::cmd::ConstPtr msg)
+{
+	cmdDes_ = *msg;
 }
 
 void stateCallback(const uav_sim_ros::state::ConstPtr msg)
@@ -146,10 +193,12 @@ int main(int argc, char *argv[])
 
 	// Init pubs, subs and srvs
 	sub_state_ = nh_->subscribe<uav_sim_ros::state>("uav_state", 1, stateCallback);
-	sub_cmdDes_ = nh_->subscribe<uav_sim_ros::cmd>("uav_cmd_des", 1, inputCallback);
+	sub_cmdDes_ = nh_->subscribe<uav_sim_ros::cmd>("uav_cmd_des", 1, cmdCallback);
+  sub_input_ = nh_->subscribe<uav_sim_ros::input>("uav_input", 1, inputCallback);
 
 	pub_cmd_ = nh_->advertise<uav_sim_ros::cmd>("uav_cmd", 1);
 	pub_info_ = nh_->advertise<uav_sim_ros::filterInfo>("safety_filter_info", 1);
+  pub_backupTraj_ = nh_->advertise<nav_msgs::Path>("backup_traj", 1);
 
 	// Retreive params
 	nhParams_->param<int32_t>("pass_through",passTrough_,0);
@@ -187,7 +236,20 @@ int main(int argc, char *argv[])
 	ROS_INFO("___KpOmegaz=%f",KpOmegaz_);
 	ROS_INFO("___maxInclination=%f",maxInclination_);
 
-	// Take it for a spin
+  ASIF::ASIFimplicit::Options opts;
+	opts.backTrajHorizon = backup_Tmax_;
+	opts.backTrajDt = integration_dt_;
+	opts.relaxReachLb = 5.;
+	opts.relaxSafeLb = 1.;
+
+
+	asif = new ASIF::ASIFimplicit(nx,nu,npSS,npBS,npBTSS,
+	                              safetySet,backupSet,dynamics,dynamicsGradients,backupController);
+	asif->initialize(lb,ub,opts);
+  geometry_msgs::PoseStamped poseTmp;
+  backTrajMsg_.header.frame_id = "/world";
+  backTrajMsg_.poses.resize((*asif).backTraj_.size(),poseTmp);
+  // Take it for a spin
 	ros::spin();
 
 	return 0;
