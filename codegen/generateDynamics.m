@@ -3,6 +3,7 @@ addpath('dynamics')
 generateMatlabFunctions()
 
 %% Compute backup controller and gradients
+clc;
 generateBackup()
 %% codegen dynamics
 cfg = coder.config('lib');
@@ -83,7 +84,7 @@ eul_tmp = 2.0 * (q(3) * q(3));
 eulx = atan2(2*q(1)*q(2)+2*q(3)*q(4),(1-2*(q(2)*q(2))-eul_tmp));
 euly = asin(2*(q(1)*q(3)-q(4)*q(2)));
 eulz = atan2(2.0 * q(1) * q(4) + 2.0 * q(2) * q(3), (1.0 - eul_tmp) - 2.0 * (q(4) * q(4)));
-vWorldNoYaw = [cos(eulz) -sin(eulz) 0; sin(eulz) cos(eulz) 0; 0 0 1]*v;
+vWorldNoYaw = [cos(-eulz) -sin(-eulz) 0; sin(-eulz) cos(-eulz) 0; 0 0 1]*v;
 
 vDes = [0;0;0;0];
 vxError = KpVxy*(vDes(1)-vWorldNoYaw(1));
@@ -95,6 +96,7 @@ pitchError = vxError-euly;
 rollErrorDot = -w(1);
 pitchErrorDot = -w(2);
 yawErrorDot = -w(3);
+
 
 uz = KpVz*vzError+hoverT/zBodyInWorld(3);
 uroll = KpAtt*rollError+KdAtt*rollErrorDot;

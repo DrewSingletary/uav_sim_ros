@@ -120,8 +120,9 @@ void sendTransformCurrent(void)
   geometry_msgs::TransformStamped uav_odom_trans;
   uav_odom_trans.header.seq = iter_;
   uav_odom_trans.header.stamp = ros::Time::now();
-  uav_odom_trans.header.frame_id = "world";
-  uav_odom_trans.child_frame_id = "uav/base_link";
+  uav_odom_trans.header.frame_id = "/world";
+  std::string ns = ros::this_node::getNamespace();
+  uav_odom_trans.child_frame_id = ns+"/"+"uav/base_link";
 
   uav_odom_trans.transform.translation.x = stateCurrent_.x;
   uav_odom_trans.transform.translation.y = stateCurrent_.y;
@@ -249,7 +250,7 @@ int main (int argc, char *argv[])
 	sub_input_ = nh_->subscribe<uav_sim_ros::input>("uav_input", 1,inputCallback);
 	pub_state_ = nh_->advertise<uav_sim_ros::state>("uav_state", 1);
 	srv_ui_ = nh_->advertiseService("integrator/ui", uiCallback);
-	joint_pub_ = nh_->advertise<sensor_msgs::JointState>("/joint_states",1);
+	joint_pub_ = nh_->advertise<sensor_msgs::JointState>("joint_states",1);
 
 	// Retreive params
 	nhParams_->param<double>("dt",dt_,0.001);

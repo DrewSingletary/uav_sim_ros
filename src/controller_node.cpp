@@ -1,4 +1,4 @@
-#include "uav_sim_ros/controller_node.hpp" 
+#include "uav_sim_ros/controller_node.hpp"
 
 using namespace Eigen;
 
@@ -142,7 +142,7 @@ int main (int argc, char *argv[])
 	// Init pubs, subs and srvs
 	sub_state_ = nh_->subscribe<uav_sim_ros::state>("uav_state", 1, controlCallback);
 	sub_cmd_ = nh_->subscribe<uav_sim_ros::cmd>("uav_cmd", 1, cmdCallback);
-	pub_input_ = nh_->advertise<uav_sim_ros::input>("uav_input", 1);
+	pub_input_ = nh_->advertise<uav_sim_ros::input>("uav_input_des", 1);
 
 	// Retreive params
 	nhParams_->param<double>("hoverThrust",hoverThrust_,0.5);

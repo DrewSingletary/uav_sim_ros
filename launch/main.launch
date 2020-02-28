@@ -17,7 +17,7 @@
 			<param name="pass_through" value="0" if="$(eval filter == 'on')"/>
 			<param name="pass_through" value="1" if="$(eval filter == 'off')"/>
 			<param name="integration_dt" value="0.01"/>
-			<param name="backup_Tmax" value="0.05"/>
+			<param name="backup_Tmax" value="1"/>
 			<param name="safety_buffer" value="0.2"/>
 			<param name="safety_buffer_soft" value="0.2"/>
 			<param name="terminal_vel_max" value="0.05"/>
@@ -28,7 +28,7 @@
 			<param name="hoverThrust" value="0.5127" />
 			<param name="KiVz" value="5.0" />
 			<param name="KpVz" value="1.0" />
-			<param name="KpVxy" value="0.7" />
+			<param name="KpVxy" value="0.3" />
 			<param name="KpAttitude" value="0.5" />
 			<param name="KdAttitude" value="0.05" />
 			<param name="KpOmegaz" value="2.0" />
@@ -39,7 +39,7 @@
 			<param name="hoverThrust" value="0.52" />
 			<param name="KiVz" value="5.0" />
 			<param name="KpVz" value="1.0" />
-			<param name="KpVxy" value="0.7" />
+			<param name="KpVxy" value="0.1" />
 			<param name="KpAttitude" value="0.5" />
 			<param name="KdAttitude" value="0.05" />
 			<param name="KiOmegaz" value="1.0" />

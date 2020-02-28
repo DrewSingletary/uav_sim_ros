@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<launch>
+
+	<node name="rviz_safety" pkg="rviz" type="rviz" args="-d $(find uav_sim_ros)/rviz/config_two_drones.rviz" required="true" />
+
+	<arg name="uav_model" default="$(find uav_sim_ros)/rviz/URDF/amberuav.urdf"/>
+  <arg name="cast_model" default="$(find uav_sim_ros)/rviz/URDF/cast.urdf"/>
+
+  <param name="cast_description" command="$(find xacro)/xacro --inorder $(arg cast_model)" />
+
+	<group ns="uav1">
+		<param name="uav_description" command="$(find xacro)/xacro --inorder $(arg uav_model)" />
+	  <node pkg="robot_state_publisher" type="robot_state_publisher" name="uav1_st_pub" >
+	      <remap from="robot_description" to="uav1/uav_description" />
+	      <param name="publish_frequency" value="1000" />
+				<param name="tf_prefix" value="uav1" />
+	  </node>
+	</group>
+
+	<group ns="uav2">
+		<param name="uav_description" command="$(find xacro)/xacro --inorder $(arg uav_model)" />
+	  <node pkg="robot_state_publisher" type="robot_state_publisher" name="uav2_st_pub" >
+	      <remap from="robot_description" to="uav2/uav_description" />
+	      <param name="publish_frequency" value="1000" />
+				<param name="tf_prefix" value="uav2" />
+	  </node>
+	</group>
+
+</launch>
