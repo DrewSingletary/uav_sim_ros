@@ -22,6 +22,7 @@ ros::Publisher pub_input_;
 ros::Publisher pub_info_;
 ros::Publisher pub_backupTraj_;
 ros::Publisher pub_ball_;
+ros::Publisher cmdDesVizu_pub_;
 
 uav_sim_ros::input inputDes_;
 uav_sim_ros::input input_;
@@ -33,6 +34,7 @@ uav_sim_ros::filterInfo filter_info_;
 nav_msgs::Path backTrajMsg_;
 nav_msgs::Path backTraj2Msg_;
 visualization_msgs::Marker ball_;
+visualization_msgs::Marker cmdDesVizu_;
 
 double backup_Tmax_;
 double terminalVelMax_;
@@ -113,7 +115,7 @@ void safetySet(const double x[nx], double h[npSS], double Dh[npSS*nx])
       }
     }
   }
-
+  filter_info_.hCurrent = h[0];
   for (int i = 0; i < npSS*nx; i++) {
     Dh[i] = 0;
   }
@@ -185,79 +187,15 @@ void filterInput(void)
 	int32_t rc = asif->filter(xNow,uDesNow,uActNow,relax);
 	filterTimer.toc();
   // ROS_INFO("Average filter time: %f", filterTimer.getAverage()*1.0e6);
-  // ROS_INFO("hSafetyNow_: %f hBackupEnd_: %f rc: %i", (*asif).hSafetyNow_, (*asif).hBackupEnd_, rc);
 
-  // //test backup controller
-  // creal_T Dutemp[68];
-  // double model[6] = {KpVxy_,KpVz_,KpAttitude_,KdAttitude_,KpOmegaz_,hoverThrust_};
-  // BackupController(xNow,model,uActNow,Dutemp);
-  // ROS_INFO("testing backup controller");
-  // ROS_INFO("u: (%f,%f,%f,%f)",uActNow[0],uActNow[1],uActNow[2],uActNow[3]);
-  // for (int i = 0; i < 68; i++) {
-  //   ROS_INFO("DU(%i): %f",i,Dutemp[i].re);
-  // }
-  //
-  // //test dynamics and gradient
-  // double Df[nx*nx];
-  // double Dg[nx*nu*nx];
-  // double f[nx];
-  // double g[nx*nu];
-  // dynamics(xNow,f,g);
-  // dynamicsGradients(xNow,Df,Dg);
-  // ROS_INFO("testing dynamics and gradient");
-  // for (int i = 0; i < nx; i++) {
-  //   ROS_INFO("f(%i): %f",i,f[i]);
-  // }
-  // for (int i = 0; i < nx*nu; i++) {
-  //   ROS_INFO("g(%i): %f",i,g[i]);
-  // }
-  // for (int i = 0; i < nx*nx; i++) {
-  //   ROS_INFO("df(%i): %f",i,Df[i]);
-  // }
-  // for (int i = 0; i < nx*nx*nu; i++) {
-  //   ROS_INFO("dg(%i): %f",i,Dg[i]);
-  // }
-  //
-  // //test safety filter and backup set
-  // double Dh[npSS*nx];
-  // double h[npSS];
-  // safetySet(xNow,h,Dh);
-  // ROS_INFO("safety");
-  // for (int i = 0; i < npSS; i++) {
-  //   ROS_INFO("h(%i): %f",i,h[i]);
-  // }
-  // for (int i = 0; i < nx*npSS; i++) {
-  //   ROS_INFO("Dh(%i): %f",i,Dh[i]);
-  // }
-  // backupSet(xNow,h,Dh);
-  // ROS_INFO("backup");
-  // for (int i = 0; i < 1; i++) {
-  //   ROS_INFO("h(%i): %f",i,h[i]);
-  // }
-  // for (int i = 0; i < nx*1; i++) {
-  //   ROS_INFO("Dh(%i): %f",i,Dh[i]);
-  // }
-  //
-  // exit(1);
+  filter_info_.hBackup = asif->hBackupEnd_;
+  filter_info_.hSafety = asif->hSafetyNow_;
 
 	if (rc < 0) {
 		ROS_INFO("QP FAILED");
 	}
 
-
-
-	// filter_info_.hBackupEnd = asif->hBackupEnd_;
-	// filter_info_.filterTimerUs = filterTimer.getAverage()*1.0e6;
-
-	// filter_info_.BTorthoBS = asif->BTorthoBS_;
-	// filter_info_.TTS = asif->TTS_;
-	// filter_info_.hSafetyNow = asif->hSafetyNow_;
-	// filter_info_.asifStatus = ASIF::ASIFimplicit::filterErrorMsgString(rc);
-	// filter_info_.relax1 = relax[0];
-	// filter_info_.relax2 = relax[1];
-
   cmdAct_ = cmdDes_;
-
   pub_cmd_.publish(cmdAct_);
 
   int i =i  = 0;
@@ -305,6 +243,23 @@ void inputCallback(const uav_sim_ros::input::ConstPtr msg)
   ball_.scale.y = ball_radius_;
   ball_.scale.z = ball_radius_;
   pub_ball_.publish(ball_);
+
+  const Vector3d vDesVec = {cmdDes_.vDes[0],cmdDes_.vDes[1],cmdDes_.vDes[2]};
+  Quaterniond quatVec_(1.0,0.0,0.0,0.0);
+  quatVec_ = Quaterniond(stateCurrent_.qw,
+                         stateCurrent_.qx,
+                         stateCurrent_.qy,
+                         stateCurrent_.qz);
+  Vector3d eulVec_(0.0,0.0,0.0);
+  quat2eulZYX(quatVec_,eulVec_);
+  const Vector3d vDesWorldVec = rotz(eulVec_(2))*vDesVec;
+  cmdDesVizu_.points[0].x = stateCurrent_.x;
+	cmdDesVizu_.points[0].y = stateCurrent_.y;
+	cmdDesVizu_.points[0].z = stateCurrent_.z;
+	cmdDesVizu_.points[1].x = stateCurrent_.x + vDesWorldVec(0)*KpVxy_;
+	cmdDesVizu_.points[1].y = stateCurrent_.y + vDesWorldVec(1)*KpVxy_;
+	cmdDesVizu_.points[1].z = stateCurrent_.z + vDesWorldVec(2)*KpVxy_;
+  cmdDesVizu_pub_.publish(cmdDesVizu_);
 }
 
 void cmdCallback(const uav_sim_ros::cmd::ConstPtr msg)
@@ -361,6 +316,7 @@ int main(int argc, char *argv[])
 	pub_info_ = nh_->advertise<uav_sim_ros::filterInfo>("safety_filter_info", 1);
   pub_backupTraj_ = nh_->advertise<nav_msgs::Path>("backup_traj", 1);
   pub_ball_ = nh_->advertise<visualization_msgs::Marker>("ball", 1);
+  cmdDesVizu_pub_ = nh_->advertise<visualization_msgs::Marker>("uav_cmd_des_vizu", 1);
 
 	// Retreive params
 	nhParams_->param<int32_t>("pass_through",passTrough_,0);
@@ -415,6 +371,20 @@ int main(int argc, char *argv[])
   geometry_msgs::PoseStamped poseTmp;
   backTrajMsg_.header.frame_id = "/world";
   backTrajMsg_.poses.resize((*asif).backTraj_.size(),poseTmp);
+
+  cmdDesVizu_.header.frame_id = "/world";
+	cmdDesVizu_.ns = ros::this_node::getNamespace();
+	cmdDesVizu_.points.resize(2);
+	cmdDesVizu_.color.a = 1.0;
+	cmdDesVizu_.color.r = 0.0;
+	cmdDesVizu_.color.g = 1.0;
+	cmdDesVizu_.color.b = 0.0;
+	cmdDesVizu_.scale.x = 0.05;
+	cmdDesVizu_.scale.y = 0.1;
+	cmdDesVizu_.scale.z = 0.1;
+	cmdDesVizu_.id = 0;
+	cmdDesVizu_.type = visualization_msgs::Marker::ARROW;
+	cmdDesVizu_.action = visualization_msgs::Marker::ADD;
   // Take it for a spin
 	ros::spin();
 

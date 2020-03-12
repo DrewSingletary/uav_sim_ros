@@ -11,7 +11,7 @@
 		<node name="integrator" pkg="uav_sim_ros" type="integrator_node" output="screen">
 			<param name="dt" value="0.001" />
       <param name="tf_prefix" value="uav1" />
-			<rosparam param="IC">[0.0, -2.0, 0.0, 0.707106781186548, 0.0, 0.0, 0.707106781186547, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]</rosparam>
+			<rosparam param="IC">[0.0, -2.0, 2.0, 0.707106781186548, 0.0, 0.0, 0.707106781186547, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]</rosparam>
 		</node>
 
 		<node name="safety_filter" pkg="uav_sim_ros" type="safety_filter_node" output="screen">
@@ -35,7 +35,7 @@
 			<param name="KpOmegaz" value="1.0" />
 			<param name="maxInclination" value="30.0" />
 
-      <param name="ball_radius" value="0.5" />
+      <param name="ball_radius" value="0.85" />
       <param name="posOnly" value="false" />
 		</node>
 
@@ -57,7 +57,7 @@
 
     <node name="integrator" pkg="uav_sim_ros" type="integrator_node" output="screen">
       <param name="dt" value="0.001" />
-      <rosparam param="IC">[0.0, 2.0, 0.0, 0.707106781186548, 0.0, 0.0, -0.707106781186547, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]</rosparam>
+      <rosparam param="IC">[0.0, 2.0, 2.0, 0.707106781186548, 0.0, 0.0, -0.707106781186547, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]</rosparam>
     </node>
 
     <node name="safety_filter" pkg="uav_sim_ros" type="safety_filter_node" output="screen">
@@ -80,7 +80,7 @@
       <param name="KdAttitude" value="0.05" />
       <param name="KpOmegaz" value="1.0" />
       <param name="maxInclination" value="30.0" />
-      <param name="ball_radius" value="0.5" />
+      <param name="ball_radius" value="0.85" />
       <param name="posOnly" value="false" />
     </node>
 

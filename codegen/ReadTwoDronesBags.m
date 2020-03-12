@@ -1,9 +1,9 @@
 %% retrieve stuff
 clear all
-addpath("/Volumes/Shared/bags/drone")
+addpath("/Volumes/Shared/ROS/bags")
 
-bag = rosbag('test2.bag');
-bsel = select(bag,'Topic','/uav_sim_ros/uav_state');
+bag = rosbag('new_contracts_2.bag');
+bsel = select(bag,'Topic','/uav1/uav_state');
 msgStructs = readMessages(bsel,'DataFormat','struct');
 for i=1:length(msgStructs)
     x(i)=msgStructs{i}.X;
@@ -32,9 +32,9 @@ end
 Tx = double(t)+double(tn)/1e9;
 X = [x',y',z',q',v',w',Omega',vb'];
 fprintf("state rate: %f\n",1/((Tx(end)-Tx(1))/length(t)));
-
+%%
 clear t tn
-bsel = select(bag,'Topic','/uav_sim_ros/uav_input');
+bsel = select(bag,'Topic','/uav1/uav_input_des');
 msgStructs = readMessages(bsel,'DataFormat','struct');
 for i=1:length(msgStructs)
     U(i,:) = msgStructs{i}.Input;
@@ -43,9 +43,9 @@ for i=1:length(msgStructs)
 end
 Tu = double(t)+double(tn)/1e9;
 fprintf("controller rate: %f\n",1/((Tu(end)-Tu(1))/length(t)));
-
+%%
 clear t tn
-bsel = select(bag,'Topic','/uav_sim_ros/uav_cmd');
+bsel = select(bag,'Topic','/uav1/uav_cmd');
 msgStructs = readMessages(bsel,'DataFormat','struct');
 for i=1:length(msgStructs)
     cmd(i,:) = msgStructs{i}.VDes;
@@ -54,7 +54,7 @@ for i=1:length(msgStructs)
 end
 Tc = double(t)+double(tn)/1e9;
 fprintf("vel command rate: %f\n",1/((Tc(end)-Tc(1))/length(t)));
- 
+%%
 tStart = max([Tu(1),Tx(1), Tc(1)]);
 tEnd = min([Tu(end),Tx(end),Tc(end)]);
  
