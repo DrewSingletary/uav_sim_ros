@@ -57,6 +57,8 @@ double maxInclination_;
 double hoverThrust_;
 double uzInt_;
 
+bool multiAgent = false;
+
 static const uint32_t nx = 17;
 static const uint32_t nu = 4;
 static const uint32_t npSS = 1;
@@ -82,43 +84,49 @@ void safetySet(const double x[nx], double h[npSS], double Dh[npSS*nx])
   ball_avoid_x = 5;
   ball_avoid_y = 5;
   ball_avoid_z = 0;
-  if (posOnly_)
-  {
-    ball_avoid_x = state2Current_.x;
-    ball_avoid_y = state2Current_.y;
-    ball_avoid_z = state2Current_.z;
-
-    h[0] = ((x[0]-ball_avoid_x)*(x[0]-ball_avoid_x)+(x[1]-ball_avoid_y)*(x[1]-ball_avoid_y)+(x[2]-ball_avoid_z)*(x[2]-ball_avoid_z))-ball_avoid_r*ball_avoid_r;
-  } else
-  {
-    uint32_t size = backTraj2Msg_.poses.size();
-    double x2[size] = {0};
-    double y2[size] = {0};
-    double z2[size] = {0};
-    uint32_t i = 0;
-    for(auto & pose : backTraj2Msg_.poses)
-  	{
-      x2[i] = pose.pose.position.x;
-      y2[i] = pose.pose.position.y;
-      z2[i] = pose.pose.position.z;
-      i++;
-  	}
-    h[0] = 100;
-    for (int j = 0; j < backTraj2Msg_.poses.size(); j++)
+  if (multiAgent){
+    if (posOnly_)
     {
-      double h_current = ((x[0]-x2[j])*(x[0]-x2[j])+(x[1]-y2[j])*(x[1]-y2[j])+(x[2]-z2[j])*(x[2]-z2[j]))-ball_avoid_r*ball_avoid_r;
-      if (h[0] > h_current) {
-        h[0] = h_current;
-        ball_avoid_x = x2[j];
-        ball_avoid_y = y2[j];
-        ball_avoid_z = z2[j];
+      ball_avoid_x = state2Current_.x;
+      ball_avoid_y = state2Current_.y;
+      ball_avoid_z = state2Current_.z;
+
+      h[0] = ((x[0]-ball_avoid_x)*(x[0]-ball_avoid_x)+(x[1]-ball_avoid_y)*(x[1]-ball_avoid_y)+(x[2]-ball_avoid_z)*(x[2]-ball_avoid_z))-ball_avoid_r*ball_avoid_r;
+    } else
+    {
+      uint32_t size = backTraj2Msg_.poses.size();
+      double x2[size] = {0};
+      double y2[size] = {0};
+      double z2[size] = {0};
+      uint32_t i = 0;
+      for(auto & pose : backTraj2Msg_.poses)
+    	{
+        x2[i] = pose.pose.position.x;
+        y2[i] = pose.pose.position.y;
+        z2[i] = pose.pose.position.z;
+        i++;
+    	}
+      h[0] = 100;
+      for (int j = 0; j < backTraj2Msg_.poses.size(); j++)
+      {
+        double h_current = ((x[0]-x2[j])*(x[0]-x2[j])+(x[1]-y2[j])*(x[1]-y2[j])+(x[2]-z2[j])*(x[2]-z2[j]))-ball_avoid_r*ball_avoid_r;
+        if (h[0] > h_current) {
+          h[0] = h_current;
+          ball_avoid_x = x2[j];
+          ball_avoid_y = y2[j];
+          ball_avoid_z = z2[j];
+        }
       }
     }
+  }
+  else {
+    h[0] = ((x[0]-ball_avoid_x)*(x[0]-ball_avoid_x)+(x[1]-ball_avoid_y)*(x[1]-ball_avoid_y)+(x[2]-ball_avoid_z)*(x[2]-ball_avoid_z))-ball_avoid_r*ball_avoid_r;
   }
   filter_info_.hCurrent = h[0];
   for (int i = 0; i < npSS*nx; i++) {
     Dh[i] = 0;
   }
+
   Dh[0] = 2*x[0]-2*ball_avoid_x;
   Dh[1] = 2*x[1]-2*ball_avoid_y;
   Dh[2] = 2*x[2]-2*ball_avoid_z;
@@ -214,6 +222,11 @@ void filterInput(void)
 	pub_backupTraj_.publish(backTrajMsg_);
   for (int i = 0; i < nu; i ++)
     input_.input[i] = uActNow[i];
+
+  if (passTrough_) {
+    for (int i = 0; i < nu; i ++)
+      input_.input[i] = uDesNow[i];
+  }
 }
 
 void inputCallback(const uav_sim_ros::input::ConstPtr msg)
@@ -300,11 +313,13 @@ int main(int argc, char *argv[])
   {
     sub_state_agent_2 = nh_->subscribe<uav_sim_ros::state>("/uav2/uav_state", 1, state2Callback);
     sub_backTraj_2 = nh_->subscribe<nav_msgs::Path>("/uav2/backup_traj", 1, backupTrajCallback);
+    multiAgent = true;
   }
   else if (ns.compare("/uav2") == 0)
   {
     sub_state_agent_2 = nh_->subscribe<uav_sim_ros::state>("/uav1/uav_state", 1, state2Callback);
     sub_backTraj_2 = nh_->subscribe<nav_msgs::Path>("/uav1/backup_traj", 1, backupTrajCallback);
+    multiAgent = true;
   }
   else
     ROS_WARN("SHOULDN'T DO THAT: %s",ns.c_str());
@@ -362,6 +377,8 @@ int main(int argc, char *argv[])
 	opts.backTrajDt = integration_dt_;
 	opts.relaxReachLb = 5.;
 	opts.relaxSafeLb = 10.;
+  opts.x0 = new double [nx]();
+  opts.x0[3] = 1;
 
 
 	asif = new ASIF::ASIFimplicit(nx,nu,npSS,npBS,npBTSS,
