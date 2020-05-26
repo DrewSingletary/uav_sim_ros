@@ -1,5 +1,5 @@
 #include "uav_sim_ros/ekf.h"
-#include "/home/anuj/catkin_ws/src/uav_sim_ros/include/uav_sim_ros/dynamics_ekf.h"
+#include "uav_sim_ros/dynamics_ekf.h"
 
 
 typedef Eigen::Matrix<double,STATE_LENGTH,STATE_LENGTH> MatrixNN;
