@@ -47,5 +47,13 @@
 			<param name="maxInclination" value="30.0" />
 		</node>
 
+
+
+    <node name="sensor" pkg="uav_sim_ros" type="sensor_node" output="screen">
+      <param name="offset_angle" value="0.138324423615"/>
+    </node>
+
+    <node name="ekf" pkg="uav_sim_ros" type="ekf_node" output="screen">
+    </node>
 	</group>
 </launch>

@@ -180,6 +180,13 @@ void dynamicsGradients(const double x[nx], double Df[nx*nx], double Dg[nx*nu*nx]
 
 void filterInput(void)
 {
+  if (passTrough_) {
+    for (int i = 0; i < nu; i ++)
+      input_.input[i] = inputDes_.input[i];
+    cmdAct_ = cmdDes_;
+    pub_cmd_.publish(cmdAct_);
+    return;
+  }
 
   double xNow[nx] = {stateCurrent_.x,stateCurrent_.y,stateCurrent_.z,
                     stateCurrent_.qw,stateCurrent_.qx,stateCurrent_.qy,stateCurrent_.qz,
@@ -223,10 +230,7 @@ void filterInput(void)
   for (int i = 0; i < nu; i ++)
     input_.input[i] = uActNow[i];
 
-  if (passTrough_) {
-    for (int i = 0; i < nu; i ++)
-      input_.input[i] = uDesNow[i];
-  }
+
 }
 
 void inputCallback(const uav_sim_ros::input::ConstPtr msg)
