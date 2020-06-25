@@ -36,6 +36,8 @@ add_message_files(
   state.msg
   cmd.msg
   filterInfo.msg
+  sensor.msg
+
 )
 
 # Generate services in the 'srv' folder
@@ -85,12 +87,25 @@ add_executable(safety_filter_node src/safety_filter_node.cpp
                codegen/codegen/lib/BackupController/rtGetNaN.cpp
                codegen/codegen/lib/BackupController/BackupController_rtwutil.cpp)
 add_executable(manual_teleop_node src/manual_teleop_node.cpp src/keyboard.cpp)
+add_executable(sensor_node src/sensor_node.cpp)
+add_executable(ekf_node src/ekf_node.cpp src/ekf.cpp
+               codegen/codegen/lib/UAVDynamics/UAVDynamics.cpp
+               codegen/codegen/lib/UAVDynamicsGradient/UAVDynamicsGradient.cpp
+               codegen/codegen/lib/BackupController/BackupController.cpp
+               codegen/codegen/lib/BackupController/backupU.cpp
+               codegen/codegen/lib/BackupController/rt_nonfinite.cpp
+               codegen/codegen/lib/BackupController/rtGetInf.cpp
+               codegen/codegen/lib/BackupController/rtGetNaN.cpp
+               codegen/codegen/lib/BackupController/BackupController_rtwutil.cpp)
 
 # Ensure messages built first
 add_dependencies(integrator_node uav_sim_ros_generate_messages_cpp)
 add_dependencies(controller_node uav_sim_ros_generate_messages_cpp)
 add_dependencies(safety_filter_node uav_sim_ros_generate_messages_cpp)
 add_dependencies(manual_teleop_node uav_sim_ros_generate_messages_cpp)
+add_dependencies(sensor_node uav_sim_ros_generate_messages_cpp)
+add_dependencies(ekf_node uav_sim_ros_generate_messages_cpp)
+
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 target_link_libraries(integrator_node
@@ -114,3 +129,18 @@ target_link_libraries(manual_teleop_node
                       ${catkin_LIBRARIES}
                       Eigen3::Eigen
 )
+
+target_link_libraries(sensor_node
+                      ${catkin_LIBRARIES}
+                      Eigen3::Eigen
+
+)
+
+target_link_libraries(ekf_node
+                      ${catkin_LIBRARIES}
+                      Eigen3::Eigen
+                      asif++::asif++
+                      asif++::libaffa
+)
+
+

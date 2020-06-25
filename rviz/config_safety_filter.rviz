@@ -4,6 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /RobotModel2
         - /Path1
       Splitter Ratio: 0.5
     Tree Height: 470
@@ -109,8 +110,8 @@ Visualization Manager:
           Show Trail: false
           Value: true
       Name: RobotModel
-      Robot Description: uav_description
-      TF Prefix: ""
+      Robot Description: uav_sim_ros/uav_description
+      TF Prefix: uav_sim_ros
       Update Interval: 0
       Value: true
       Visual Enabled: true
@@ -172,7 +173,7 @@ Visualization Manager:
       Marker Topic: /uav_sim_ros/uav_cmd_des_vizu
       Name: Marker
       Namespaces:
-        {}
+        /uav_sim_ros: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
